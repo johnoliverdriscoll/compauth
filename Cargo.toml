@@ -1,0 +1,28 @@
+[package]
+name = "compauth"
+version = "0.1.0"
+authors = ["John Driscoll <johnoliverdriscoll@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+futures-util = "0.3.5"
+hyper = "0.13.7"
+num_cpus = "1.13.0"
+rand = "0.7.3"
+rust-clacc = "0.5.0"
+serde = {version = "1.0.114", features = ["derive"]}
+serde_json = "1.0.56"
+tokio = {version = "0.2.21", features = ["macros", "rt-threaded", "tcp", "time"]}
+velocypack = "0.1.1"
+
+[[bin]]
+name = "authority"
+path = "src/service/authority.rs"
+
+[[bin]]
+name = "worker"
+path = "src/service/worker.rs"
+
+[[bin]]
+name = "synchronizer"
+path = "src/service/synchronizer.rs"
