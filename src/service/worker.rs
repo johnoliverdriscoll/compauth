@@ -3,11 +3,12 @@ use compauth::{
     constant::WORKER_ADDR,
     permission::{Nonce, Permission},
     request::UpdateResponse,
-    util::{to_bytes, from_bytes},
+    util::from_bytes,
     worker::Worker,
 };
 use hyper::{
     Body, Error, Method, Request, Response, Server, StatusCode,
+    body::to_bytes,
     service::{make_service_fn, service_fn},
 };
 use tokio::sync::Mutex;
@@ -18,7 +19,7 @@ async fn handle_key(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let key: BigInt = match from_bytes(bytes.as_ref()) {
+    let key: BigInt = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -44,7 +45,7 @@ async fn handle_add_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let perm: Permission = match from_bytes(bytes.as_ref()) {
+    let perm: Permission = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -70,7 +71,7 @@ async fn handle_update_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let res: UpdateResponse = match from_bytes(bytes.as_ref()) {
+    let res: UpdateResponse = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();

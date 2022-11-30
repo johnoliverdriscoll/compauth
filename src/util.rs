@@ -1,65 +1,57 @@
-use futures_util::TryStreamExt;
 use hyper::{
-    Body, Client, Response, Request, StatusCode,
-    client::HttpConnector,
+    Body,
+    Client as HyperClient,
+    Method,
+    Response,
+    Request,
+    StatusCode,
+    body::Bytes,
+    client::connect::HttpConnector,
 };
 use serde::{Serialize, Deserialize};
 
-pub async fn to_bytes(body: Body) -> Option<Vec<u8>> {
-    let mut stream = body.map_ok(|chunk| -> Vec<u8> {
-        chunk.slice(0..chunk.len()).to_vec()
-    });
-    match stream.try_next().await {
-        Ok(res) => res,
-        Err(_) => None,
-    }
-}
-
-pub fn from_bytes<'a, T: Deserialize<'a>>(
-    bytes: Option<&'a Vec<u8>>
+pub fn from_bytes<'a, T: Deserialize<'a>, E>(
+    bytes: &'a Result<Bytes, E>,
 ) -> Option<T> {
     match bytes {
-        Some(bytes) => {
-            match velocypack::from_bytes(bytes) {
+        Ok(bytes) => {
+            match velocypack::from_bytes(&bytes[..]) {
                 Ok(res) => Some(res),
                 Err(_) => None,
             }
         }
-        None => None,
+        Err(_) => None,
     }
 }
 
-pub fn from_json<'a, T: Deserialize<'a>>(
-    bytes: Option<&'a Vec<u8>>
+pub fn from_json<'a, T: Deserialize<'a>, E>(
+    bytes: &'a Result<Bytes, E>,
 ) -> Option<T> {
     match bytes {
-        Some(bytes) => match std::str::from_utf8(&bytes) {
+        Ok(bytes) => match std::str::from_utf8(&bytes[..]) {
             Ok(json) => match serde_json::from_str(json) {
                 Ok(res) => Some(res),
-                Err(x) => {
-                    println!("{}", x);
-                    None
-                },
+                Err(_) => None
             },
             Err(_) => None,
         }
-        None => None,
+        Err(_) => None,
     }
 }
 
-pub struct AddrBaseClient {
-    client: Client<HttpConnector, Body>,
+pub struct Client {
+    client: HyperClient<HttpConnector, Body>,
     base: String,
 }
 
-impl AddrBaseClient {
+impl Client {
 
-    pub fn new(scheme: &str, addr: &str) -> AddrBaseClient {
+    pub fn new(host: &str) -> Client {
         let mut base = String::new();
-        base.push_str(scheme);
-        base.push_str(addr);
-        AddrBaseClient {
-            client: Client::new(),
+        base.push_str("http://");
+        base.push_str(host);
+        Client {
+            client: HyperClient::new(), 
             base: base,
         }
     }
@@ -70,7 +62,11 @@ impl AddrBaseClient {
     ) -> Result<Response<Body>, &'static str> {
         let mut uri = self.base.clone();
         uri.push_str(path);
-        let req = Request::get(uri).body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap();
         match self.client.request(req).await {
             Ok(resp) => {
                 match resp.status() {
@@ -91,7 +87,11 @@ impl AddrBaseClient {
         let mut uri = self.base.clone();
         uri.push_str(path);
         let data = velocypack::to_bytes(&body).unwrap();
-        let req = Request::post(uri).body(Body::from(data)).unwrap();
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .body(Body::from(data))
+            .unwrap();
         match self.client.request(req).await {
             Ok(resp) => {
                 match resp.status() {
@@ -112,7 +112,11 @@ impl AddrBaseClient {
         let mut uri = self.base.clone();
         uri.push_str(path);
         let data = velocypack::to_bytes(&body).unwrap();
-        let req = Request::put(uri).body(Body::from(data)).unwrap();
+        let req = Request::builder()
+            .method(Method::PUT)
+            .uri(uri)
+            .body(Body::from(data))
+            .unwrap();
         match self.client.request(req).await {
             Ok(resp) => {
                 match resp.status() {

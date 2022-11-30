@@ -1,11 +1,12 @@
 use clacc::{Witness, gmp::BigInt};
+use hyper::body::to_bytes;
 use std::sync::atomic::AtomicPtr;
 use tokio::{sync::Mutex, task::JoinHandle, time::{interval, Duration}};
 use crate::{
     constant::{AUTHORITY_ADDR, WORKER_ADDR, UPDATE_WINDOW_MILLIS},
     permission::{Action, Nonce, Permission},
     request::{ActionRequest, UpdateRequest, UpdateResponse},
-    util::{from_bytes, to_bytes, AddrBaseClient},
+    util::{from_bytes, Client},
 };
 
 /// A Synchronizer manages the Witness update window by synchronizing
@@ -14,8 +15,8 @@ use crate::{
 /// Requests to the system need to go through the Synchronizer to
 /// eliminate possible race conditions during the update process.
 pub struct Synchronizer {
-    auth_client: AddrBaseClient,
-    worker_client: AddrBaseClient,
+    auth_client: Client,
+    worker_client: Client,
     guard_acc: Mutex<()>,
     guard_update: Mutex<()>,
 }
@@ -25,8 +26,8 @@ impl Synchronizer {
     /// Create a new Synchronizer.
     pub async fn new() -> Result<Self, &'static str> {
         Synchronizer {
-            auth_client: AddrBaseClient::new("http://", AUTHORITY_ADDR),
-            worker_client: AddrBaseClient::new("http://", WORKER_ADDR),
+            auth_client: Client::new(AUTHORITY_ADDR),
+            worker_client: Client::new(WORKER_ADDR),
             guard_acc: Mutex::new(()),
             guard_update: Mutex::new(()),
         }.key_worker().await
@@ -38,7 +39,7 @@ impl Synchronizer {
         let resp = self.auth_client.get("/key").await?;
         // Deserialize the response to a BigInt.
         let bytes = to_bytes(resp.into_body()).await;
-        let key: BigInt = match from_bytes(bytes.as_ref()) {
+        let key: BigInt = match from_bytes(&bytes) {
             Some(res) => res,
             None => {
                 return Err("response error");
@@ -67,7 +68,7 @@ impl Synchronizer {
         // that includes populated Nonce.
         let resp = self.auth_client.post("/permission", perm).await?;
         let bytes = to_bytes(resp.into_body()).await;
-        perm = match from_bytes(bytes.as_ref()) {
+        perm = match from_bytes(&bytes) {
             Some(res) => res,
             None => {
                 return Err("response error");
@@ -84,7 +85,7 @@ impl Synchronizer {
     /// This code is reused by `update_permission` and `action` so that a
     /// current witness can be attached to the request to the Authority.
     async fn get_witness(
-        worker_client: &mut AddrBaseClient,
+        worker_client: &mut Client,
         nonce: Nonce,
     ) -> Result<Witness<BigInt>, &'static str> {
         // Build the request path in the form of "/witness/{nonce}".
@@ -93,7 +94,7 @@ impl Synchronizer {
         // Request the path from the Worker and deserialize the response.
         let resp = worker_client.get(&path).await?;
         let bytes = to_bytes(resp.into_body()).await;
-        match from_bytes::<Witness<BigInt>>(bytes.as_ref()) {
+        match from_bytes::<Witness<BigInt>, _>(&bytes) {
             Some(res) => Ok(res),
             None => Err("response error"),
         }
@@ -128,7 +129,7 @@ impl Synchronizer {
         // Submit the request to the Authority and deserialize the response.
         let resp = self.auth_client.put("/permission", req).await?;
         let bytes = to_bytes(resp.into_body()).await;
-        let response: UpdateResponse = match from_bytes(bytes.as_ref()) {
+        let response: UpdateResponse = match from_bytes(&bytes) {
             Some(res) => res,
             None => {
                 return Err("response error");

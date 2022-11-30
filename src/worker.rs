@@ -5,8 +5,12 @@ use clacc::{
     velocypack::VpackSerializer,
     typenum::U16 as N,
 };
+use crossbeam::thread;
 use num_cpus;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex as StdMutex},
+};
 use tokio::sync::Mutex;
 use crate::permission::{Nonce, Permission};
 use crate::request::UpdateResponse;
@@ -244,13 +248,25 @@ impl Worker {
             // The Accumulator Mutex gets unlocked here, allowing other
             // threads to call `add_permission` or `update_permission`.
         }
-        // Perform the Witness update using all available cores.
-        update.update_witnesses::<M, N, S, _, _, _>(
-            &acc,
-            self.updating_perms.values_mut(),
-            self.updating_additions.values_mut(),
-            num_cpus::get()
-        )
+        // Update witnesses.
+        let additions = Arc::new(StdMutex::new(self.updating_additions.values_mut()));
+        let staticels = Arc::new(StdMutex::new(self.updating_perms.values_mut()));
+        thread::scope(|scope| {
+            for _ in 0..num_cpus::get() {
+                let acc = acc.clone();
+                let u = update.clone();
+                let additions = Arc::clone(&additions);
+                let staticels = Arc::clone(&staticels);
+                scope.spawn(move |_| {
+                    u.update_witnesses::<M, N, S, _, _>(
+                        &acc,
+                        additions,
+                        staticels,
+                    );
+                });
+            }
+            Ok(())
+        }).unwrap()
     }
 
     /// Finalize the update process.

@@ -3,10 +3,11 @@ use compauth::{
     constant::AUTHORITY_ADDR,
     permission::Permission, 
     request::{UpdateRequest, ActionRequest},
-    util::{to_bytes, from_bytes},
+    util::from_bytes,
 };
 use hyper::{
     Body, Error, Method, Request, Response, Server, StatusCode,
+    body::to_bytes,
     service::{make_service_fn, service_fn},
 };
 use std::{convert::Infallible, sync::{Arc, atomic::AtomicPtr}};
@@ -27,7 +28,7 @@ async fn handle_add_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let perm: Permission = match from_bytes(bytes.as_ref()) {
+    let perm: Permission = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -48,7 +49,7 @@ async fn handle_update_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let req: UpdateRequest = match from_bytes(bytes.as_ref()) {
+    let req: UpdateRequest = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -77,7 +78,7 @@ async fn handle_action(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let req: ActionRequest = match from_bytes(bytes.as_ref()) {
+    let req: ActionRequest = match from_bytes(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();

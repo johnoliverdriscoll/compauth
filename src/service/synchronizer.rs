@@ -2,10 +2,11 @@ use compauth::{
     synchronizer::Synchronizer,
     constant::SYNCHRONIZER_ADDR,
     permission::{Action, Permission},
-    util::{to_bytes, from_json},
+    util::from_json,
 };
 use hyper::{
     Body, Error, Method, Request, Response, Server, StatusCode,
+    body::to_bytes,
     service::{make_service_fn, service_fn},
 };
 use serde::Deserialize;
@@ -29,7 +30,7 @@ async fn handle_add_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let actions: Vec<Action> = match from_json(bytes.as_ref()) {
+    let actions: Vec<Action> = match from_json(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -55,7 +56,7 @@ async fn handle_update_perm(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let req: UpdateRequest = match from_json(bytes.as_ref()) {
+    let req: UpdateRequest = match from_json(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
@@ -81,7 +82,7 @@ async fn handle_action(
     req: Request<Body>,
 ) -> Response<Body> {
     let bytes = to_bytes(req.into_body()).await;
-    let req: ActionRequest = match from_json(bytes.as_ref()) {
+    let req: ActionRequest = match from_json(&bytes) {
         Some(res) => res,
         None => {
             let mut bad_request = Response::default();
