@@ -1,14 +1,16 @@
 use clacc::{
     Accumulator,
-    blake2::Mapper as M,
+    blake2::Mapper,
     gmp::BigInt,
     velocypack::VpackSerializer,
-    typenum::U16 as N,
 };
 use rand::RngCore;
 use tokio::sync::Mutex;
 use crate::permission::Permission;
 use crate::request::{UpdateRequest, UpdateResponse, ActionRequest};
+
+/// Type for a 128-bit Blake2 digest mapper.
+type M = Mapper<16>;
 
 /// Type for a VelocyPack serialized Permission.
 type S = VpackSerializer<Permission>;
@@ -21,15 +23,15 @@ pub struct Authority {
     key: BigInt,
 
     /// The Accumulator used to verify Permissions.
-    verifying: Accumulator<BigInt>,
+    verifying: Accumulator<BigInt, 16>,
 
     /// The Accumulator containing Permissions whose Witnesses are currently
     /// being updated by the Worker.
-    updating: Accumulator<BigInt>,
+    updating: Accumulator<BigInt, 16>,
 
     /// The Accumulator containing the most recent versions of all
     /// Permissions.
-    staging: Accumulator<BigInt>,
+    staging: Accumulator<BigInt, 16>,
 
     /// Mutex locked while the Authority is operating on its Accumulators.
     guard: Mutex<()>,
@@ -47,7 +49,7 @@ impl Authority {
         // scope for the purposes of this demonstration, so an Accumulator is
         // instead initialized from a random private key.
         let mut rng = rand::thread_rng();
-        let (acc, _, _) = Accumulator::<BigInt>::with_random_key(
+        let (acc, _, _) = Accumulator::<BigInt, 16>::with_random_key(
             |bytes| rng.fill_bytes(bytes),
             None,
         );
@@ -78,7 +80,7 @@ impl Authority {
         // overwriting this Permission in the future.
         perm.nonce = rand::random::<u64>().into();
         // Add the Permission to the staging Accumulator.
-        self.staging.add::<M, N, S, _>(&perm);
+        self.staging.add::<M, S, _>(&perm);
         // Return the Permission with the new Nonce.
         perm
     }
@@ -101,9 +103,9 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Delete the old Permission from the staging Accumulator.
-        self.staging.del::<M, N, S, _>(&req.perm, &req.witness)?;
+        self.staging.del::<M, S, _>(&req.perm, &req.witness)?;
         // Add the new Permission to the staging Accumulator.
-        self.staging.add::<M, N, S, _>(&req.update);
+        self.staging.add::<M, S, _>(&req.update);
         // Return the latest accumulation value.
         Ok(UpdateResponse {
             req: req,
@@ -119,7 +121,7 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Verify the Permission is part of the verifying Accumulator.
-        self.verifying.verify::<M, N, S, _>(&req.perm, &req.witness)?;
+        self.verifying.verify::<M, S, _>(&req.perm, &req.witness)?;
         // Ensure the requested action is in the actions list.
         match req.perm.actions.iter().find(|&action| action == &req.action) {
             Some(_) => Ok(()),

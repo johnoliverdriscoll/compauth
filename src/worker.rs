@@ -1,9 +1,8 @@
 use clacc::{
     Accumulator, Update, Witness,
-    blake2::Mapper as M,
+    blake2::Mapper,
     gmp::BigInt,
     velocypack::VpackSerializer,
-    typenum::U16 as N,
 };
 use crossbeam::thread;
 use num_cpus;
@@ -14,6 +13,9 @@ use std::{
 use tokio::sync::Mutex;
 use crate::permission::{Nonce, Permission};
 use crate::request::UpdateResponse;
+
+/// Type for a 128-bit Blake2 digest mapper.
+type M = Mapper<16>;
 
 /// Type for a VelocyPack serialized Permission.
 type S = VpackSerializer<Permission>;
@@ -34,10 +36,10 @@ pub struct Worker {
     ///
     /// The field will start in a None state until the public key from the
     /// Authority can be set using `set_key`.
-    acc: Option<Accumulator<BigInt>>,
+    acc: Option<Accumulator<BigInt, 16>>,
 
     /// The absorbed updates.
-    update: Update<BigInt>,
+    update: Update<BigInt, 16>,
 
     /// The Permission-Witness pairs that will be added during the current
     /// update window.
@@ -96,7 +98,7 @@ impl Worker {
             None => {
                 // Allocate new Accumulator initialized from the Authority's
                 // public key.
-                let acc = Accumulator::<BigInt>::with_public_key(key);
+                let acc = Accumulator::<BigInt, 16>::with_public_key(key);
                 self.value = acc.get_value().clone();
                 self.acc = Some(acc);
                 Ok(())
@@ -112,14 +114,14 @@ impl Worker {
     fn add_permission_internal(
         perm: Permission,
         value: &BigInt,
-        acc: &mut Accumulator<BigInt>,
-        update: &mut Update<BigInt>,
+        acc: &mut Accumulator<BigInt, 16>,
+        update: &mut Update<BigInt, 16>,
         additions: &mut PermissionMap,
     ) {
         // Add Permission to Accumulator.
-        let mut witness = acc.add::<M, N, S, _>(&perm);
+        let mut witness = acc.add::<M, S, _>(&perm);
         // Absorb the addition into the batched Update.
-        update.add::<M, N, S, _>(&perm, &witness);
+        update.add::<M, S, _>(&perm, &witness);
         // Set the witness value.
         witness.set_value(value);
         // Insert the pair into the collection of added elements.
@@ -169,7 +171,7 @@ impl Worker {
             },
         };
         // Absorb the deletion into the batched Update.
-        self.update.del::<M, N, S, _>(&res.req.perm, &res.req.witness);
+        self.update.del::<M, S, _>(&res.req.perm, &res.req.witness);
         // Use the helper to add the Permission.
         Self::add_permission_internal(
             res.req.update,
@@ -258,7 +260,7 @@ impl Worker {
                 let additions = Arc::clone(&additions);
                 let staticels = Arc::clone(&staticels);
                 scope.spawn(move |_| {
-                    u.update_witnesses::<M, N, S, _, _>(
+                    u.update_witnesses::<M, S, _, _>(
                         &acc,
                         additions,
                         staticels,
