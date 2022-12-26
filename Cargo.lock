@@ -478,13 +478,12 @@ dependencies = [
 
 [[package]]
 name = "rust-clacc"
-version = "1.0.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c0e3dacf581fcc6dfc373ff62484832f2fb1f66132bc7f1494a3c745d97d854"
+checksum = "16e51d748592830f9b37c2a2a1a356ae693223c67aef8204d61f28575f29565b"
 dependencies = [
  "blake2",
  "generic-array",
- "rand",
  "rust-gmp",
  "serde",
  "typenum",

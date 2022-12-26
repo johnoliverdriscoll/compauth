@@ -5,6 +5,7 @@ use clacc::{
     velocypack::VpackSerializer,
     typenum::U16 as N,
 };
+use rand::RngCore;
 use tokio::sync::Mutex;
 use crate::permission::Permission;
 use crate::request::{UpdateRequest, UpdateResponse, ActionRequest};
@@ -45,7 +46,11 @@ impl Authority {
         // to reconstitute in a secure hardware environment. This is out-of-
         // scope for the purposes of this demonstration, so an Accumulator is
         // instead initialized from a random private key.
-        let (acc, _, _) = Accumulator::<BigInt>::with_random_key(None);
+        let mut rng = rand::thread_rng();
+        let (acc, _, _) = Accumulator::<BigInt>::with_random_key(
+            |bytes| rng.fill_bytes(bytes),
+            None,
+        );
         // Allocate the Authority using the public key and three copies of the
         // Accumulator for each phase of the update process.
         Authority {
