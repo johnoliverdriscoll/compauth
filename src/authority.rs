@@ -23,15 +23,15 @@ pub struct Authority {
     key: BigInt,
 
     /// The Accumulator used to verify Permissions.
-    verifying: Accumulator<BigInt, 16>,
+    verifying: Accumulator<BigInt>,
 
     /// The Accumulator containing Permissions whose Witnesses are currently
     /// being updated by the Worker.
-    updating: Accumulator<BigInt, 16>,
+    updating: Accumulator<BigInt>,
 
     /// The Accumulator containing the most recent versions of all
     /// Permissions.
-    staging: Accumulator<BigInt, 16>,
+    staging: Accumulator<BigInt>,
 
     /// Mutex locked while the Authority is operating on its Accumulators.
     guard: Mutex<()>,
@@ -49,7 +49,7 @@ impl Authority {
         // scope for the purposes of this demonstration, so an Accumulator is
         // instead initialized from a random private key.
         let mut rng = rand::thread_rng();
-        let (acc, _, _) = Accumulator::<BigInt, 16>::with_random_key(
+        let (acc, _, _) = Accumulator::<BigInt>::with_random_key(
             |bytes| rng.fill_bytes(bytes),
             None,
         );

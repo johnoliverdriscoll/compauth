@@ -36,10 +36,10 @@ pub struct Worker {
     ///
     /// The field will start in a None state until the public key from the
     /// Authority can be set using `set_key`.
-    acc: Option<Accumulator<BigInt, 16>>,
+    acc: Option<Accumulator<BigInt>>,
 
     /// The absorbed updates.
-    update: Update<BigInt, 16>,
+    update: Update<BigInt>,
 
     /// The Permission-Witness pairs that will be added during the current
     /// update window.
@@ -98,7 +98,7 @@ impl Worker {
             None => {
                 // Allocate new Accumulator initialized from the Authority's
                 // public key.
-                let acc = Accumulator::<BigInt, 16>::with_public_key(key);
+                let acc = Accumulator::<BigInt>::with_public_key(key);
                 self.value = acc.get_value().clone();
                 self.acc = Some(acc);
                 Ok(())
@@ -114,8 +114,8 @@ impl Worker {
     fn add_permission_internal(
         perm: Permission,
         value: &BigInt,
-        acc: &mut Accumulator<BigInt, 16>,
-        update: &mut Update<BigInt, 16>,
+        acc: &mut Accumulator<BigInt>,
+        update: &mut Update<BigInt>,
         additions: &mut PermissionMap,
     ) {
         // Add Permission to Accumulator.
