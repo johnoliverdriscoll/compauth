@@ -245,15 +245,23 @@ impl Worker {
             // threads to call `add_permission` or `update_permission`.
         }
         // Update witnesses.
-        let additions = Arc::new(StdMutex::new(self.updating_additions.values_mut()));
-        let staticels = Arc::new(StdMutex::new(self.updating_perms.values_mut()));
+        let additions = Arc::new(StdMutex::new(
+            self.updating_additions.values_mut()
+        ));
+        let staticels = Arc::new(StdMutex::new(
+            self.updating_perms.values_mut()
+        ));
         thread::scope(|scope| {
             for _ in 0..num_cpus::get() {
                 let acc = acc.clone();
                 let u = update.clone();
                 let additions = Arc::clone(&additions);
                 let staticels = Arc::clone(&staticels);
-                scope.spawn(move |_| u.update_witnesses(&acc, additions, staticels));
+                scope.spawn(move |_| u.update_witnesses(
+                    &acc,
+                    additions,
+                    staticels,
+                ));
             }
             Ok(())
         }).unwrap()
