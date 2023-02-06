@@ -1,4 +1,7 @@
-use clacc::{Witness, gmp::BigInt};
+use clacc::{
+    gmp::BigInt,
+    Witness,
+};
 use hyper::body::to_bytes;
 use std::sync::atomic::AtomicPtr;
 use tokio::{sync::Mutex, task::JoinHandle, time::{interval, Duration}};

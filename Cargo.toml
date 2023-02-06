@@ -11,7 +11,7 @@ http = "0.2.8"
 hyper = {version = "0.14.23", features = ["client", "server", "http1", "tcp"]}
 num_cpus = "1.14.0"
 rand = "0.8.5"
-rust-clacc = "1.4.0"
+rust-clacc = {version = "2.3.0", features = ["blake2", "gmp", "serde"]}
 serde = {version = "1.0.148", features = ["derive"]}
 serde_json = "1.0.89"
 tokio = {version = "1.22.0", features = ["macros", "rt-multi-thread", "net", "time"]}

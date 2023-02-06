@@ -26,3 +26,9 @@ pub struct Permission {
     /// different actions.
     pub version: usize,
 }
+
+impl Into<Vec<u8>> for Permission {
+    fn into(self) -> Vec<u8> {
+        velocypack::to_bytes(&self).unwrap()
+    }
+}

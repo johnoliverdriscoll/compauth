@@ -1,8 +1,6 @@
 use clacc::{
     Accumulator, Update, Witness,
-    blake2::Mapper,
     gmp::BigInt,
-    velocypack::VpackSerializer,
 };
 use crossbeam::thread;
 use num_cpus;
@@ -11,14 +9,10 @@ use std::{
     sync::{Arc, Mutex as StdMutex},
 };
 use tokio::sync::Mutex;
-use crate::permission::{Nonce, Permission};
-use crate::request::UpdateResponse;
-
-/// Type for a 128-bit Blake2 digest mapper.
-type M = Mapper<16>;
-
-/// Type for a VelocyPack serialized Permission.
-type S = VpackSerializer<Permission>;
+use crate::{
+    permission::{Nonce, Permission},
+    request::UpdateResponse,
+};
 
 /// Type for a map where Nonces map to Permission-Witness pairs.
 type PermissionMap = HashMap<Nonce, (Permission, Witness<BigInt>)>;
@@ -119,11 +113,11 @@ impl Worker {
         additions: &mut PermissionMap,
     ) {
         // Add Permission to Accumulator.
-        let mut witness = acc.add::<M, S, _>(&perm);
+        let mut witness = acc.add(&perm);
         // Absorb the addition into the batched Update.
-        update.add::<M, S, _>(&perm, &witness);
+        update.add(&perm, &witness);
         // Set the witness value.
-        witness.set_value(value);
+        witness.set_value(value.clone());
         // Insert the pair into the collection of added elements.
         additions.insert(perm.nonce, (perm, witness));
     }
@@ -171,7 +165,7 @@ impl Worker {
             },
         };
         // Absorb the deletion into the batched Update.
-        self.update.del::<M, S, _>(&res.req.perm, &res.req.witness);
+        self.update.del(&res.req.perm, &res.req.witness);
         // Use the helper to add the Permission.
         Self::add_permission_internal(
             res.req.update,
@@ -183,7 +177,7 @@ impl Worker {
         // Synchronize the Worker's accumulation with the Authority's.
         // Note that the Worker can't call Accumulator.del because it does not
         // have the private key.
-        acc.set_value(&res.value);
+        acc.set_value(res.value);
         Ok(())
     }
 
@@ -259,13 +253,7 @@ impl Worker {
                 let u = update.clone();
                 let additions = Arc::clone(&additions);
                 let staticels = Arc::clone(&staticels);
-                scope.spawn(move |_| {
-                    u.update_witnesses::<M, S, _, _>(
-                        &acc,
-                        additions,
-                        staticels,
-                    );
-                });
+                scope.spawn(move |_| u.update_witnesses(&acc, additions, staticels));
             }
             Ok(())
         }).unwrap()

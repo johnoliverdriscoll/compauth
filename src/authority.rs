@@ -1,19 +1,10 @@
-use clacc::{
-    Accumulator,
-    blake2::Mapper,
-    gmp::BigInt,
-    velocypack::VpackSerializer,
-};
+use clacc::{Accumulator, gmp::BigInt};
 use rand::RngCore;
 use tokio::sync::Mutex;
-use crate::permission::Permission;
-use crate::request::{UpdateRequest, UpdateResponse, ActionRequest};
-
-/// Type for a 128-bit Blake2 digest mapper.
-type M = Mapper<16>;
-
-/// Type for a VelocyPack serialized Permission.
-type S = VpackSerializer<Permission>;
+use crate::{
+    permission::Permission,
+    request::{UpdateRequest, UpdateResponse, ActionRequest},
+};
 
 /// An Authority that controls the private key of an accumulator and is able
 /// to add and delete Permissions.
@@ -80,7 +71,7 @@ impl Authority {
         // overwriting this Permission in the future.
         perm.nonce = rand::random::<u64>().into();
         // Add the Permission to the staging Accumulator.
-        self.staging.add::<M, S, _>(&perm);
+        self.staging.add(&perm);
         // Return the Permission with the new Nonce.
         perm
     }
@@ -103,9 +94,9 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Delete the old Permission from the staging Accumulator.
-        self.staging.del::<M, S, _>(&req.perm, &req.witness)?;
+        self.staging.del(&req.perm, &req.witness)?;
         // Add the new Permission to the staging Accumulator.
-        self.staging.add::<M, S, _>(&req.update);
+        self.staging.add(&req.update);
         // Return the latest accumulation value.
         Ok(UpdateResponse {
             req: req,
@@ -121,7 +112,7 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Verify the Permission is part of the verifying Accumulator.
-        self.verifying.verify::<M, S, _>(&req.perm, &req.witness)?;
+        self.verifying.verify(&req.perm, &req.witness)?;
         // Ensure the requested action is in the actions list.
         match req.perm.actions.iter().find(|&action| action == &req.action) {
             Some(_) => Ok(()),
