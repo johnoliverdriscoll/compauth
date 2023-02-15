@@ -1,7 +1,5 @@
-use clacc::{
-    gmp::BigInt,
-    Witness,
-};
+use clacc::Witness;
+use gmp::mpz::Mpz;
 use hyper::body::to_bytes;
 use std::sync::atomic::AtomicPtr;
 use tokio::{sync::Mutex, task::JoinHandle, time::{interval, Duration}};
@@ -40,9 +38,9 @@ impl Synchronizer {
     async fn key_worker(mut self) -> Result<Self, &'static str> {
         // Request the public key from the Authority.
         let resp = self.auth_client.get("/key").await?;
-        // Deserialize the response to a BigInt.
+        // Deserialize the response to a Mpz.
         let bytes = to_bytes(resp.into_body()).await;
-        let key: BigInt = match from_bytes(&bytes) {
+        let key: Mpz = match from_bytes(&bytes) {
             Some(res) => res,
             None => {
                 return Err("response error");
@@ -90,14 +88,14 @@ impl Synchronizer {
     async fn get_witness(
         worker_client: &mut Client,
         nonce: Nonce,
-    ) -> Result<Witness<BigInt>, &'static str> {
+    ) -> Result<Witness<Mpz>, &'static str> {
         // Build the request path in the form of "/witness/{nonce}".
         let mut path = "/witness/".to_owned();
         path.push_str(&nonce.to_string());
         // Request the path from the Worker and deserialize the response.
         let resp = worker_client.get(&path).await?;
         let bytes = to_bytes(resp.into_body()).await;
-        match from_bytes::<Witness<BigInt>, _>(&bytes) {
+        match from_bytes::<Witness<Mpz>, _>(&bytes) {
             Some(res) => Ok(res),
             None => Err("response error"),
         }

@@ -1,7 +1,10 @@
 use clacc::{
-    Accumulator, Update, Witness,
-    gmp::BigInt,
+    Accumulator,
+    Update,
+    Witness,
+    blake2::Map,
 };
+use gmp::mpz::Mpz;
 use crossbeam::thread;
 use num_cpus;
 use std::{
@@ -15,7 +18,7 @@ use crate::{
 };
 
 /// Type for a map where Nonces map to Permission-Witness pairs.
-type PermissionMap = HashMap<Nonce, (Permission, Witness<BigInt>)>;
+type PermissionMap = HashMap<Nonce, (Permission, Witness<Mpz>)>;
 
 /// A Worker that absorbs new and update Permissions during a window and can
 /// perform a batched Update on a set of Witnesses.
@@ -23,17 +26,17 @@ pub struct Worker {
 
     /// The value of the Accumulator before any updates absorbed during the
     /// current window have been applied.
-    value: BigInt,
+    value: Mpz,
 
     /// The current Accumulator. Although it will only have the public key,
     /// it will stay synchronized with the trusted value.
     ///
     /// The field will start in a None state until the public key from the
     /// Authority can be set using `set_key`.
-    acc: Option<Accumulator<BigInt>>,
+    acc: Option<Accumulator<Mpz, Map>>,
 
     /// The absorbed updates.
-    update: Update<BigInt>,
+    update: Update<Mpz, Map>,
 
     /// The Permission-Witness pairs that will be added during the current
     /// update window.
@@ -82,7 +85,7 @@ impl Worker {
     /// allocated, this method returns an error.
     pub async fn set_key(
         &mut self,
-        key: BigInt,
+        key: Mpz,
     ) -> Result<(), &'static str> {
         // Lock the Accumulator Mutex.
         let _guard_acc = self.guard_acc.lock().await;
@@ -92,7 +95,7 @@ impl Worker {
             None => {
                 // Allocate new Accumulator initialized from the Authority's
                 // public key.
-                let acc = Accumulator::<BigInt>::with_public_key(key);
+                let acc = Accumulator::<Mpz, Map>::with_public_key(key);
                 self.value = acc.get_value().clone();
                 self.acc = Some(acc);
                 Ok(())
@@ -107,9 +110,9 @@ impl Worker {
     /// the Accumulator are thread safe.
     fn add_permission_internal(
         perm: Permission,
-        value: &BigInt,
-        acc: &mut Accumulator<BigInt>,
-        update: &mut Update<BigInt>,
+        value: &Mpz,
+        acc: &mut Accumulator<Mpz, Map>,
+        update: &mut Update<Mpz, Map>,
         additions: &mut PermissionMap,
     ) {
         // Add Permission to Accumulator.
@@ -185,7 +188,7 @@ impl Worker {
     pub async fn witness(
         &self,
         nonce: Nonce,
-    ) -> Result<Option<Witness<BigInt>>, &'static str> {
+    ) -> Result<Option<Witness<Mpz>>, &'static str> {
         // Lock the Accumulator Mutex to ensure latest Permissions collection
         // is available if called during the update process.
         let _guard_acc = self.guard_acc.lock().await;

@@ -1,4 +1,8 @@
-use clacc::{Accumulator, gmp::BigInt};
+use clacc::{
+    Accumulator,
+    blake2::Map,
+};
+use gmp::mpz::Mpz;
 use rand::RngCore;
 use tokio::sync::Mutex;
 use crate::{
@@ -11,18 +15,18 @@ use crate::{
 pub struct Authority {
 
     /// The Accumulator's public key.
-    key: BigInt,
+    key: Mpz,
 
     /// The Accumulator used to verify Permissions.
-    verifying: Accumulator<BigInt>,
+    verifying: Accumulator<Mpz, Map>,
 
     /// The Accumulator containing Permissions whose Witnesses are currently
     /// being updated by the Worker.
-    updating: Accumulator<BigInt>,
+    updating: Accumulator<Mpz, Map>,
 
     /// The Accumulator containing the most recent versions of all
     /// Permissions.
-    staging: Accumulator<BigInt>,
+    staging: Accumulator<Mpz, Map>,
 
     /// Mutex locked while the Authority is operating on its Accumulators.
     guard: Mutex<()>,
@@ -40,7 +44,7 @@ impl Authority {
         // scope for the purposes of this demonstration, so an Accumulator is
         // instead initialized from a random private key.
         let mut rng = rand::thread_rng();
-        let (acc, _, _) = Accumulator::<BigInt>::with_random_key(
+        let (acc, _, _) = Accumulator::<Mpz, Map>::with_random_key(
             |bytes| rng.fill_bytes(bytes),
             None,
         );
@@ -56,7 +60,7 @@ impl Authority {
     }
 
     /// Return the Accumulator's public key.
-    pub fn get_key(&self) -> &BigInt {
+    pub fn get_key(&self) -> &Mpz {
         &self.key
     }
 
@@ -94,7 +98,10 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Delete the old Permission from the staging Accumulator.
-        self.staging.del(&req.perm, &req.witness)?;
+        match self.staging.del(&req.perm, &req.witness) {
+            Err(_) => return Err("could not delete permission"),
+            _ => (),
+        };
         // Add the new Permission to the staging Accumulator.
         self.staging.add(&req.update);
         // Return the latest accumulation value.
@@ -112,7 +119,10 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Verify the Permission is part of the verifying Accumulator.
-        self.verifying.verify(&req.perm, &req.witness)?;
+        match self.verifying.verify(&req.perm, &req.witness) {
+            Err(_) => return Err("could not verify permission"),
+            _ => (),
+        };
         // Ensure the requested action is in the actions list.
         match req.perm.actions.iter().find(|&action| action == &req.action) {
             Some(_) => Ok(()),

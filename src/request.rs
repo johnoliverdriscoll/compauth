@@ -1,4 +1,5 @@
-use clacc::{Witness, gmp::BigInt};
+use clacc::Witness;
+use gmp::mpz::Mpz;
 use serde::{Serialize, Deserialize};
 use crate::permission::{Action, Permission};
 
@@ -11,7 +12,7 @@ pub struct ActionRequest {
 
     /// The Witness attesting that the Permission is a member of the
     /// accumulation.
-    pub witness: Witness<BigInt>,
+    pub witness: Witness<Mpz>,
 
     /// The action being taken.
     pub action: Action,
@@ -26,7 +27,7 @@ pub struct UpdateRequest {
 
     /// The Witness attesting that the previous version of the Permission
     /// is a member of the accumulation.
-    pub witness: Witness<BigInt>,
+    pub witness: Witness<Mpz>,
 
     /// The new version of the Permission.
     pub update: Permission,
@@ -40,5 +41,5 @@ pub struct UpdateResponse {
     pub req: UpdateRequest,
 
     /// The accumulation value after the Permision has been updated.
-    pub value: BigInt,
+    pub value: Mpz,
 }
