@@ -588,9 +588,9 @@ dependencies = [
 
 [[package]]
 name = "rust-clacc"
-version = "3.0.3"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd3659edd7ac77e7daa49b36190eb5ab41499c69bd999c29e817849b456d892d"
+checksum = "0ae34b0d07525233cf3a3cc3a2af0d3d93d520a790f878241425e206f60b3cd3"
 dependencies = [
  "blake2",
  "num-bigint",

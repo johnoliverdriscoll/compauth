@@ -75,7 +75,7 @@ impl Authority {
         // overwriting this Permission in the future.
         perm.nonce = rand::random::<u64>().into();
         // Add the Permission to the staging Accumulator.
-        self.staging.add(&perm);
+        self.staging.add(perm.clone());
         // Return the Permission with the new Nonce.
         perm
     }
@@ -98,12 +98,12 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Delete the old Permission from the staging Accumulator.
-        match self.staging.del(&req.perm, &req.witness) {
+        match self.staging.del(req.perm.clone(), req.witness.clone()) {
             Err(_) => return Err("could not delete permission"),
             _ => (),
         };
         // Add the new Permission to the staging Accumulator.
-        self.staging.add(&req.update);
+        self.staging.add(req.update.clone());
         // Return the latest accumulation value.
         Ok(UpdateResponse {
             req: req,
@@ -119,7 +119,7 @@ impl Authority {
         // Lock the Mutex.
         let _guard = self.guard.lock().await;
         // Verify the Permission is part of the verifying Accumulator.
-        match self.verifying.verify(&req.perm, &req.witness) {
+        match self.verifying.verify(req.perm.clone(), req.witness.clone()) {
             Err(_) => return Err("could not verify permission"),
             _ => (),
         };

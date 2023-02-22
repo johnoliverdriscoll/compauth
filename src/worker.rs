@@ -116,9 +116,9 @@ impl Worker {
         additions: &mut PermissionMap,
     ) {
         // Add Permission to Accumulator.
-        let mut witness = acc.add(&perm);
+        let mut witness = acc.add(perm.clone());
         // Absorb the addition into the batched Update.
-        update.add(&perm, &witness);
+        update.add(perm.clone(), witness.clone());
         // Set the witness value.
         witness.set_value(value.clone());
         // Insert the pair into the collection of added elements.
@@ -168,7 +168,7 @@ impl Worker {
             },
         };
         // Absorb the deletion into the batched Update.
-        self.update.del(&res.req.perm, &res.req.witness);
+        self.update.del(res.req.perm.clone(), res.req.witness.clone());
         // Use the helper to add the Permission.
         Self::add_permission_internal(
             res.req.update,
