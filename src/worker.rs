@@ -2,7 +2,7 @@ use clacc::{
     Accumulator,
     Update,
     Witness,
-    blake2::Map,
+    sha3::Shake128 as Map,
 };
 use gmp::mpz::Mpz;
 use crossbeam::thread;
